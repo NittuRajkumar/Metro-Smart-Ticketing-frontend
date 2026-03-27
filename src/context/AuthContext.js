@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext();
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api/auth';
+const API_URL = process.env.REACT_APP_API_URL || 'https://metro-smart-ticketing-backend.onrender.com/api/auth';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);

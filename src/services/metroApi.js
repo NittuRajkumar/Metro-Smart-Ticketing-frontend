@@ -1,4 +1,4 @@
-const AUTH_API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api/auth';
+const AUTH_API_URL = process.env.REACT_APP_API_URL || 'https://metro-smart-ticketing-backend.onrender.com/api/auth';
 const METRO_API_URL = AUTH_API_URL.replace(/\/auth$/, '/metro');
 
 const createHeaders = () => ({
