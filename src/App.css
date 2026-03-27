@@ -1,0 +1,56 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --app-bg-1: #253179;
+  --app-bg-2: #3d4ca7;
+  --app-bg-3: #5e66c9;
+  --app-radial-1: rgba(173, 135, 255, 0.56);
+  --app-radial-2: rgba(120, 197, 255, 0.48);
+  --app-radial-3: rgba(143, 121, 255, 0.4);
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background:
+    radial-gradient(circle at 12% 20%, var(--app-radial-1), transparent 38%),
+    radial-gradient(circle at 88% 14%, var(--app-radial-2), transparent 36%),
+    radial-gradient(circle at 68% 92%, var(--app-radial-3), transparent 42%),
+    linear-gradient(145deg, var(--app-bg-1) 0%, var(--app-bg-2) 46%, var(--app-bg-3) 100%);
+  overflow-x: hidden;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+}
+
+button {
+  font-family: inherit;
+}
+
+input {
+  font-family: inherit;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}

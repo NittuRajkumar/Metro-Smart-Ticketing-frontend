@@ -1,0 +1,17 @@
+<svg width="220" height="120" viewBox="0 0 220 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Hyderabad Metro Rail Logo</title>
+  <desc id="desc">Stylized Hyderabad Metro Rail badge</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1e3a8a"/>
+      <stop offset="100%" stop-color="#4338ca"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="212" height="112" rx="20" fill="url(#bg)"/>
+  <rect x="14" y="14" width="192" height="92" rx="14" fill="rgba(255,255,255,0.08)"/>
+  <circle cx="44" cy="60" r="22" fill="#ffffff"/>
+  <path d="M33 62 L44 48 L55 62" stroke="#1e3a8a" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M34 70 H54" stroke="#ef4444" stroke-width="5" stroke-linecap="round"/>
+  <text x="76" y="56" fill="#e0e7ff" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="700">HMRL</text>
+  <text x="76" y="78" fill="#c7d2fe" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="600">HYDERABAD METRO</text>
+</svg>
