@@ -1,8 +1,12 @@
 const AUTH_API_URL = process.env.REACT_APP_API_URL || 'https://metro-smart-ticketing-backend.onrender.com/api/auth';
 const METRO_API_URL = AUTH_API_URL.replace(/\/auth$/, '/metro');
+const AUTH_TOKEN_KEY = 'authToken';
 
 const createHeaders = () => ({
-  'Content-Type': 'application/json'
+  'Content-Type': 'application/json',
+  ...(localStorage.getItem(AUTH_TOKEN_KEY)
+    ? { Authorization: `Bearer ${localStorage.getItem(AUTH_TOKEN_KEY)}` }
+    : {})
 });
 
 const request = async (path, options = {}) => {
@@ -17,6 +21,11 @@ const request = async (path, options = {}) => {
   const data = await response.json();
 
   if (!response.ok) {
+    if (response.status === 401) {
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('user');
+      window.dispatchEvent(new Event('auth:unauthorized'));
+    }
     throw new Error(data.message || 'Request failed');
   }
 

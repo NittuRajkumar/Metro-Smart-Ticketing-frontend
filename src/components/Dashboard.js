@@ -4,6 +4,7 @@ import QRCode from 'qrcode';
 import {
   FiArrowRight,
   FiCalendar,
+  FiCheckCircle,
   FiClock,
   FiCreditCard,
   FiLogOut,
@@ -27,7 +28,17 @@ import hmrlLogo from '../assets/logos/hmrl-logo.svg';
 import redLineLogo from '../assets/logos/red-line-logo.svg';
 import blueLineLogo from '../assets/logos/blue-line-logo.svg';
 import greenLineLogo from '../assets/logos/green-line-logo.svg';
+import metroTrainArrival from '../assets/logos/metro-train-arrival.svg';
 import './Dashboard.css';
+
+const getTodayForInput = () => {
+  const now = new Date();
+  const offset = now.getTimezoneOffset();
+  const localDate = new Date(now.getTime() - offset * 60 * 1000);
+  return localDate.toISOString().split('T')[0];
+};
+
+const INTERCHANGE_STATIONS = ['Ameerpet', 'MGBS'];
 
 const Dashboard = () => {
   const { user, logout, updateUser } = useAuth();
@@ -45,10 +56,12 @@ const Dashboard = () => {
   const [pageError, setPageError] = useState('');
   const [flashMessage, setFlashMessage] = useState('');
   const [activeLine, setActiveLine] = useState('all');
+  const [stationPickerTarget, setStationPickerTarget] = useState('fromStation');
+  const [successNotice, setSuccessNotice] = useState(null);
   const [formData, setFormData] = useState({
     fromStation: 'Miyapur',
     toStation: 'Ameerpet',
-    journeyDate: new Date().toISOString().split('T')[0],
+    journeyDate: getTodayForInput(),
     upiId: user?.defaultUpiId || ''
   });
 
@@ -58,9 +71,9 @@ const Dashboard = () => {
 
   const stationOptions = stations.map((station) => station.name);
   const lineStationMap = {
-    red: ['Miyapur', 'JNTU College', 'KPHB Colony', 'Kukatpally', 'Balanagar', 'Moosapet', 'Bharat Nagar', 'Erragadda', 'ESI Hospital', 'Ameerpet', 'Punjagutta', 'Irrum Manzil', 'Khairatabad', 'Lakdikapul', 'Assembly', 'Nampally', 'Gandhi Bhavan', 'Osmania Medical College', 'MG Bus Station', 'Malakpet', 'New Market', 'Musarambagh', 'Dilsukhnagar', 'Chaitanyapuri', 'Victoria Memorial', 'L B Nagar'],
-    blue: ['Raidurg', 'HITEC City', 'Durgam Cheruvu', 'Madhapur', 'Peddamma Gudi', 'Jubilee Hills Check Post', 'Road No 5 Jubilee Hills', 'Yusufguda', 'Madhura Nagar', 'Ameerpet', 'Begumpet', 'Prakash Nagar', 'Rasoolpura', 'Paradise', 'Parade Ground', 'Secunderabad East', 'Mettuguda', 'Tarnaka', 'Habsiguda', 'NGRI', 'Stadium', 'Uppal', 'Nagole'],
-    green: ['JBS Parade Ground', 'Secunderabad West', 'Gandhi Hospital', 'Musheerabad', 'RTC X Roads', 'Chikkadpally', 'Narayanguda', 'Sultan Bazar', 'MG Bus Station']
+    red: ['Miyapur', 'JNTU College', 'KPHB Colony', 'Kukatpally', 'Balanagar', 'Moosapet', 'Bharat Nagar', 'Erragadda', 'ESI Hospital', 'Ameerpet'],
+    blue: ['Raidurg', 'Hitec City', 'Madhapur', 'Peddamma Gudi', 'Jubilee Hills Check Post', 'Madhura Nagar', 'Ameerpet', 'Begumpet', 'Paradise', 'Secunderabad East', 'Panjagutta', 'Khairatabad', 'Lakdikapul', 'Assembly', 'Nampally', 'Gandhi Bhavan', 'Osmania Medical College', 'MGBS'],
+    green: ['MGBS', 'Malakpet', 'Dilsukhnagar', 'L B Nagar']
   };
 
   const filteredStationOptions = activeLine === 'all'
@@ -70,6 +83,32 @@ const Dashboard = () => {
   const renderedStationOptions = filteredStationOptions.length > 0 ? filteredStationOptions : stationOptions;
   const activeLineLabel = activeLine === 'all' ? 'All Corridors' : `${activeLine.charAt(0).toUpperCase()}${activeLine.slice(1)} Line`;
   const activeLineChipClass = activeLine === 'all' ? 'all-chip' : `${activeLine}-chip`;
+  const mapSections = [
+    {
+      key: 'red',
+      title: 'Red Line',
+      subtitle: 'Miyapur to Ameerpet',
+      accentClass: 'red-network',
+      stations: lineStationMap.red,
+      highlights: ['Miyapur', 'Kukatpally', 'Ameerpet']
+    },
+    {
+      key: 'blue',
+      title: 'Blue Line',
+      subtitle: 'Raidurg to MGBS branch',
+      accentClass: 'blue-network',
+      stations: lineStationMap.blue,
+      highlights: ['Raidurg', 'Ameerpet', 'MGBS']
+    },
+    {
+      key: 'green',
+      title: 'Green Line',
+      subtitle: 'MGBS to L B Nagar',
+      accentClass: 'green-network',
+      stations: lineStationMap.green,
+      highlights: ['MGBS', 'Dilsukhnagar', 'L B Nagar']
+    }
+  ];
   const carouselSlides = [
     {
       title: 'Fast Track Metro Booking',
@@ -87,6 +126,18 @@ const Dashboard = () => {
       chip: 'Secure Digital Ticket'
     }
   ];
+
+  useEffect(() => {
+    if (!successNotice) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setSuccessNotice(null);
+    }, 4800);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [successNotice]);
 
   useEffect(() => {
     const loadMetroData = async () => {
@@ -202,6 +253,28 @@ const Dashboard = () => {
     }));
   };
 
+  const handleMapStationSelect = (stationName) => {
+    setPageError('');
+    setFlashMessage('');
+    setFormData((current) => ({
+      ...current,
+      [stationPickerTarget]: stationName
+    }));
+    setStationPickerTarget((current) => (current === 'fromStation' ? 'toStation' : 'fromStation'));
+  };
+
+  const handleSuccessNoticeAction = () => {
+    if (successNotice?.type === 'payment' && selectedQrTicket) {
+      setSuccessNotice(null);
+      setSelectedQrTicket(selectedQrTicket);
+      return;
+    }
+
+    const ticketDesk = document.querySelector('.live-ticket-panel');
+    ticketDesk?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setSuccessNotice(null);
+  };
+
   const refreshTickets = async () => {
     const response = await getMyTickets();
     setTickets(response.tickets || []);
@@ -211,8 +284,13 @@ const Dashboard = () => {
   const handleBookTicket = async (event) => {
     event.preventDefault();
 
-    if (!fareInfo) {
-      setPageError('Select two different stations to calculate a route.');
+    if (!formData.fromStation || !formData.toStation || !formData.journeyDate) {
+      setPageError('Please select from station, to station, and journey date.');
+      return;
+    }
+
+    if (formData.fromStation === formData.toStation) {
+      setPageError('From and To stations must be different.');
       return;
     }
 
@@ -229,6 +307,12 @@ const Dashboard = () => {
       const createdTicket = response.ticket || updatedTickets[0];
       setSelectedTicket(createdTicket);
       setFlashMessage('Ticket reserved. Complete payment to activate the QR gate pass.');
+      setSuccessNotice({
+        type: 'booking',
+        title: 'Metro ticket reserved successfully',
+        description: 'Best wishes for your Hyderabad Metro journey. Your booking is saved in the ticket desk and ready for payment.',
+        actionLabel: 'View Booking'
+      });
     } catch (error) {
       setPageError(error.message || 'Unable to reserve ticket');
     } finally {
@@ -253,6 +337,12 @@ const Dashboard = () => {
       setSelectedTicket(paidTicket);
       setSelectedQrTicket(paidTicket);
       setFlashMessage('Payment complete. Your QR ticket is ready for station scanning.');
+      setSuccessNotice({
+        type: 'payment',
+        title: 'Payment completed successfully',
+        description: 'Best wishes. Your Hyderabad Metro QR pass is active now and ready for gate scanning.',
+        actionLabel: 'Open QR Ticket'
+      });
     } catch (error) {
       setPageError(error.message || 'Unable to process payment');
     } finally {
@@ -289,6 +379,27 @@ const Dashboard = () => {
   return (
     <div className="metro-dashboard">
       <div className="metro-grid" />
+
+      {successNotice && (
+        <div className="success-toast" role="status" aria-live="polite">
+          <div className="success-toast-icon">
+            <FiCheckCircle />
+          </div>
+          <div className="success-toast-copy">
+            <p className="success-toast-label">Journey Update</p>
+            <h3>{successNotice.title}</h3>
+            <p>{successNotice.description}</p>
+          </div>
+          <div className="success-toast-actions">
+            <button type="button" className="success-toast-btn" onClick={handleSuccessNoticeAction}>
+              {successNotice.actionLabel}
+            </button>
+            <button type="button" className="success-toast-close" onClick={() => setSuccessNotice(null)}>
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
 
       <header className="metro-topbar">
         <div>
@@ -361,10 +472,27 @@ const Dashboard = () => {
             <p>City Mobility • Smart Ticketing • Contactless Entry</p>
           </div>
         </div>
-        <div className="metro-train-track" aria-hidden="true">
-          <span className="metro-train-icon train-one"><FaTrainSubway /></span>
-          <span className="metro-train-icon train-two"><FaTrainSubway /></span>
-          <span className="metro-train-icon train-three"><FaTrainSubway /></span>
+        <div className="metro-arrival-scene" aria-hidden="true">
+          <div className="metro-platform-sign">
+            <span>Next Arrival</span>
+            <strong>Hyderabad Metro</strong>
+          </div>
+
+          <div className="metro-train-track">
+            <div className="metro-platform-columns">
+              <span />
+              <span />
+              <span />
+              <span />
+            </div>
+            <div className="metro-track-rail rail-top" />
+            <div className="metro-track-rail rail-bottom" />
+            <div className="metro-platform-shadow" />
+
+            <div className="metro-arrival-train train-arrival-one">
+              <img src={metroTrainArrival} alt="Hyderabad Metro train arrival" className="metro-arrival-train-image" />
+            </div>
+          </div>
         </div>
       </section>
 
@@ -443,39 +571,112 @@ const Dashboard = () => {
         </div>
 
         <div className="metro-map-legend">
-          <div className="legend-pill red-line-pill">Red Line: Miyapur to LB Nagar</div>
-          <div className="legend-pill blue-line-pill">Blue Line: Raidurg to Nagole</div>
-          <div className="legend-pill green-line-pill">Green Line: JBS Parade Ground to MGBS</div>
+          <div className="legend-pill red-line-pill">Red Line: Miyapur to Ameerpet</div>
+          <div className="legend-pill blue-line-pill">Blue Line: Raidurg, Secunderabad and MGBS branches</div>
+          <div className="legend-pill green-line-pill">Green Line: MGBS to L B Nagar</div>
         </div>
 
-        <div className="metro-map-visual" aria-label="Hyderabad metro line map overview">
-          <div className={`map-line red-map-line ${activeLine !== 'all' && activeLine !== 'red' ? 'line-dimmed' : 'line-highlighted'}`}>
-            <span className="line-name">Red</span>
-            <div className="line-track" />
-            <div className="line-stations">
-              <span>Miyapur</span>
-              <span>Ameerpet</span>
-              <span>LB Nagar</span>
+        <div className="map-picker-panel">
+          <div className="map-picker-header">
+            <div>
+              <p className="eyebrow">Interactive Network Guide</p>
+              <h4>Click any station on the schematic metro map to fill your trip form</h4>
+            </div>
+            <div className="station-target-toggle" role="group" aria-label="Choose whether the next station selection updates from or to station">
+              <button
+                type="button"
+                className={`target-toggle-btn ${stationPickerTarget === 'fromStation' ? 'active' : ''}`}
+                onClick={() => setStationPickerTarget('fromStation')}
+              >
+                Set From
+              </button>
+              <button
+                type="button"
+                className={`target-toggle-btn ${stationPickerTarget === 'toStation' ? 'active' : ''}`}
+                onClick={() => setStationPickerTarget('toStation')}
+              >
+                Set To
+              </button>
             </div>
           </div>
 
-          <div className={`map-line blue-map-line ${activeLine !== 'all' && activeLine !== 'blue' ? 'line-dimmed' : 'line-highlighted'}`}>
-            <span className="line-name">Blue</span>
-            <div className="line-track" />
-            <div className="line-stations">
-              <span>Raidurg</span>
-              <span>Ameerpet</span>
-              <span>Nagole</span>
-            </div>
+          <div className="map-selection-status">
+            <span className="map-selection-pill">Next click updates: {stationPickerTarget === 'fromStation' ? 'From Station' : 'To Station'}</span>
+            <span className="map-selection-pill">Selected trip: {formData.fromStation} to {formData.toStation}</span>
           </div>
 
-          <div className={`map-line green-map-line ${activeLine !== 'all' && activeLine !== 'green' ? 'line-dimmed' : 'line-highlighted'}`}>
-            <span className="line-name">Green</span>
-            <div className="line-track" />
-            <div className="line-stations">
-              <span>JBS</span>
-              <span>Parade Ground</span>
-              <span>MGBS</span>
+          <div className="metro-visual-map">
+            {mapSections.map((section) => (
+              <button
+                key={section.key}
+                type="button"
+                className={`map-overview-card ${section.accentClass} ${activeLine === section.key ? 'active' : ''} ${activeLine !== 'all' && activeLine !== section.key ? 'line-dimmed' : ''}`}
+                onClick={() => setActiveLine(section.key)}
+              >
+                <div className="map-overview-head">
+                  <div>
+                    <h4>{section.title}</h4>
+                    <p>{section.subtitle}</p>
+                  </div>
+                  <span className="network-line-count">{section.stations.length} stations</span>
+                </div>
+
+                <div className="map-overview-track" aria-hidden="true">
+                  <div className={`simple-line-bar ${section.key}-bar`} />
+                  <div className="map-overview-stops">
+                    {section.highlights.map((stationName) => (
+                      <span key={`${section.key}-${stationName}`}>{stationName}</span>
+                    ))}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <div className="interactive-network-guide">
+            {mapSections.map((section) => (
+              <article
+                key={`${section.key}-guide`}
+                className={`network-line-card ${section.accentClass} ${activeLine !== 'all' && activeLine !== section.key ? 'line-dimmed' : ''}`}
+              >
+                <div className="network-line-head">
+                  <div>
+                    <h4>{section.title}</h4>
+                    <p>{section.subtitle}</p>
+                  </div>
+                  <button
+                    type="button"
+                    className={`guide-focus-btn ${activeLine === section.key ? 'active' : ''}`}
+                    onClick={() => setActiveLine(activeLine === section.key ? 'all' : section.key)}
+                  >
+                    {activeLine === section.key ? 'Show All Lines' : `Focus ${section.title}`}
+                  </button>
+                </div>
+
+                <div className="network-station-grid">
+                  {section.stations.map((stationName) => {
+                    const isSelected = formData.fromStation === stationName || formData.toStation === stationName;
+                    const isInterchange = INTERCHANGE_STATIONS.includes(stationName);
+
+                    return (
+                      <button
+                        key={`${section.key}-${stationName}`}
+                        type="button"
+                        className={`network-station-chip ${isSelected ? 'selected' : ''} ${isInterchange ? 'interchange' : ''}`}
+                        onClick={() => handleMapStationSelect(stationName)}
+                      >
+                        <span>{stationName}</span>
+                        <small>{isInterchange ? 'Interchange station' : `Tap to set ${stationPickerTarget === 'fromStation' ? 'From' : 'To'}`}</small>
+                      </button>
+                    );
+                  })}
+                </div>
+              </article>
+            ))}
+
+            <div className="schematic-map-notes">
+              <span className="map-selection-pill">Interchanges: Ameerpet, MGBS</span>
+              <span className="map-selection-pill">Use the map overview above and station guide below together</span>
             </div>
           </div>
         </div>
@@ -627,7 +828,7 @@ const Dashboard = () => {
                   type="date"
                   name="journeyDate"
                   value={formData.journeyDate}
-                  min={new Date().toISOString().split('T')[0]}
+                  min={getTodayForInput()}
                   onChange={handleInputChange}
                 />
               </div>
@@ -684,7 +885,16 @@ const Dashboard = () => {
               )}
             </div>
 
-            <button type="submit" className="primary-btn metro-btn-book" disabled={booking || !fareInfo}>
+            <button
+              type="submit"
+              className="primary-btn metro-btn-book"
+              disabled={
+                booking
+                || !formData.fromStation
+                || !formData.toStation
+                || !formData.journeyDate
+              }
+            >
               {booking ? 'Reserving your ticket...' : 'Reserve Metro Ticket'}
             </button>
           </form>
@@ -738,51 +948,80 @@ const Dashboard = () => {
               <p className="empty-text">No bookings yet. Reserve your first metro ride from the planner.</p>
             ) : (
               <div className="ticket-list">
-                {tickets.map((ticket) => (
-                  <article
-                    key={ticket._id}
-                    className={`ticket-card ${primaryTicket?._id === ticket._id ? 'active' : ''}`}
-                    onClick={() => openTicket(ticket)}
-                  >
-                    <div className="ticket-card-top">
-                      <div>
-                        <p>{ticket.ticketNumber}</p>
-                        <h4>{ticket.fromStation} to {ticket.toStation}</h4>
-                      </div>
-                      <span className={`ticket-status ${ticket.status.toLowerCase()}`}>{ticket.status}</span>
-                    </div>
-
-                    <div className="ticket-meta">
-                      <span><FiClock /> {ticket.durationMinutes} min</span>
-                      <span><FiCreditCard /> Rs. {ticket.fare}</span>
-                    </div>
-
-                    {ticket.status === 'PENDING' ? (
-                      <button
-                        type="button"
-                        className="secondary-btn btn metro-btn-pay"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          handlePayTicket(ticket);
-                        }}
-                        disabled={payingTicketId === ticket._id}
+                {pendingTickets.length > 0 && (
+                  <div className="ticket-group">
+                    <h4 className="ticket-group-title">Pending Booking Tickets ({pendingTickets.length})</h4>
+                    {pendingTickets.map((ticket) => (
+                      <article
+                        key={ticket._id}
+                        className={`ticket-card ${primaryTicket?._id === ticket._id ? 'active' : ''}`}
+                        onClick={() => openTicket(ticket)}
                       >
-                        {payingTicketId === ticket._id ? 'Processing payment...' : 'Pay with Metro Wallet'}
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="secondary-btn btn metro-btn-view"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setSelectedQrTicket(ticket);
-                        }}
+                        <div className="ticket-card-top">
+                          <div>
+                            <p>{ticket.ticketNumber}</p>
+                            <h4>{ticket.fromStation} to {ticket.toStation}</h4>
+                          </div>
+                          <span className={`ticket-status ${ticket.status.toLowerCase()}`}>{ticket.status}</span>
+                        </div>
+
+                        <div className="ticket-meta">
+                          <span><FiClock /> {ticket.durationMinutes} min</span>
+                          <span><FiCreditCard /> Rs. {ticket.fare}</span>
+                        </div>
+
+                        <button
+                          type="button"
+                          className="secondary-btn btn metro-btn-pay"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handlePayTicket(ticket);
+                          }}
+                          disabled={payingTicketId === ticket._id}
+                        >
+                          {payingTicketId === ticket._id ? 'Processing payment...' : 'Pay with Metro Wallet'}
+                        </button>
+                      </article>
+                    ))}
+                  </div>
+                )}
+
+                {paidTickets.length > 0 && (
+                  <div className="ticket-group">
+                    <h4 className="ticket-group-title">Paid Booking Tickets ({paidTickets.length})</h4>
+                    {paidTickets.map((ticket) => (
+                      <article
+                        key={ticket._id}
+                        className={`ticket-card ${primaryTicket?._id === ticket._id ? 'active' : ''}`}
+                        onClick={() => openTicket(ticket)}
                       >
-                        View QR Ticket
-                      </button>
-                    )}
-                  </article>
-                ))}
+                        <div className="ticket-card-top">
+                          <div>
+                            <p>{ticket.ticketNumber}</p>
+                            <h4>{ticket.fromStation} to {ticket.toStation}</h4>
+                          </div>
+                          <span className={`ticket-status ${ticket.status.toLowerCase()}`}>{ticket.status}</span>
+                        </div>
+
+                        <div className="ticket-meta">
+                          <span><FiClock /> {ticket.durationMinutes} min</span>
+                          <span><FiCreditCard /> Rs. {ticket.fare}</span>
+                        </div>
+
+                        <button
+                          type="button"
+                          className="secondary-btn btn metro-btn-view"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setSelectedQrTicket(ticket);
+                          }}
+                        >
+                          View QR Ticket
+                        </button>
+                      </article>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </section>

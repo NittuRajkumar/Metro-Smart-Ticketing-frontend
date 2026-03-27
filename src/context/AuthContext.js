@@ -3,33 +3,94 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 const AuthContext = createContext();
 
 const API_URL = process.env.REACT_APP_API_URL || 'https://metro-smart-ticketing-backend.onrender.com/api/auth';
+const AUTH_TOKEN_KEY = 'authToken';
+
+const getStoredToken = () => localStorage.getItem(AUTH_TOKEN_KEY);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [token, setToken] = useState(getStoredToken());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const persistUser = (nextUser) => {
-    if (nextUser) {
+  const persistAuth = (nextUser, nextToken = null) => {
+    if (nextUser && nextToken) {
       localStorage.setItem('user', JSON.stringify(nextUser));
+      localStorage.setItem(AUTH_TOKEN_KEY, nextToken);
     } else {
       localStorage.removeItem('user');
+      localStorage.removeItem(AUTH_TOKEN_KEY);
     }
+
+    setToken(nextUser && nextToken ? nextToken : null);
     setUser(nextUser);
+  };
+
+  const authorizedFetch = async (path, options = {}) => {
+    const currentToken = getStoredToken();
+    const response = await fetch(`${API_URL}${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(currentToken ? { Authorization: `Bearer ${currentToken}` } : {}),
+        ...(options.headers || {})
+      }
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Request failed');
+    }
+
+    return data;
   };
 
   // Initialize from localStorage
   useEffect(() => {
-    try {
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
+    const bootstrapAuth = async () => {
+      try {
+        const storedUser = localStorage.getItem('user');
+        const storedToken = getStoredToken();
+
+        if (!storedToken) {
+          setUser(null);
+          return;
+        }
+
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
+        }
+
+        // Sync user profile with server to validate token and wallet state.
+        const me = await authorizedFetch('/me', { method: 'GET' });
+        setUser(me.user || null);
+        localStorage.setItem('user', JSON.stringify(me.user || null));
+        setToken(storedToken);
+      } catch (err) {
+        localStorage.removeItem('user');
+        localStorage.removeItem(AUTH_TOKEN_KEY);
+        setUser(null);
+        setToken(null);
+        console.error('Auth initialization error:', err);
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error('Auth initialization error:', err);
-    } finally {
-      setLoading(false);
-    }
+    };
+
+    bootstrapAuth();
+  }, []);
+
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      persistAuth(null, null);
+      setError('Session expired. Please login again.');
+    };
+
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+    return () => {
+      window.removeEventListener('auth:unauthorized', handleUnauthorized);
+    };
   }, []);
 
   const register = async (email, password, fullName) => {
@@ -56,7 +117,7 @@ export const AuthProvider = ({ children }) => {
         throw new Error(data.message || 'Registration failed');
       }
 
-      persistUser(data.user);
+      persistAuth(data.user, data.token);
 
       return true;
     } catch (err) {
@@ -91,7 +152,7 @@ export const AuthProvider = ({ children }) => {
         throw new Error(data.message || 'Login failed');
       }
 
-      persistUser(data.user);
+      persistAuth(data.user, data.token);
 
       return true;
     } catch (err) {
@@ -105,8 +166,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    setUser(null);
-    localStorage.removeItem('user');
+    persistAuth(null, null);
     setError('');
   };
 
@@ -121,11 +181,13 @@ export const AuthProvider = ({ children }) => {
   };
 
   const updateUser = (nextUser) => {
-    persistUser(nextUser);
+    const currentToken = getStoredToken();
+    persistAuth(nextUser, currentToken);
   };
 
   const value = {
     user,
+    token,
     loading,
     error,
     register,
@@ -133,7 +195,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     refreshUser,
     updateUser,
-    isAuthenticated: !!user
+    isAuthenticated: !!user && !!token
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
