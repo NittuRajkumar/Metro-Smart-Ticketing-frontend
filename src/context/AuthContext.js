@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext();
 
-const API_URL = 'https://metro-smart-ticketing-backend.onrender.com';
+const API_URL = 'https://metro-smart-ticketing-backend.onrender.com/api/auth';
 const AUTH_TOKEN_KEY = 'authToken';
 
 const getStoredToken = () => localStorage.getItem(AUTH_TOKEN_KEY);
